@@ -7,11 +7,14 @@ const TABS = [
   { key: 'post', label: '🧾 Post New Job', icon: <PlusCircle className="inline w-5 h-5 mr-1" /> },
   { key: 'jobs', label: '👀 View Posted Jobs', icon: <List className="inline w-5 h-5 mr-1" /> },
   { key: 'applicants', label: '📨 View Applicants', icon: <Users className="inline w-5 h-5 mr-1" /> },
+  { key: 'courses', label: 'courses', icon: <Edit2 className="inline w-5 h-5 mr-1" /> },
+
   { key: 'edit', label: '✏️ Edit / Delete Jobs', icon: <Edit2 className="inline w-5 h-5 mr-1" /> },
 ];
 
 export default function HomeEmployer({ onSignOut, onProfile }) {
-  const [activeTab, setActiveTab] = useState('post');
+  const [
+    activeTab, setActiveTab] = useState('post');
   const [jobs, setJobs] = useState([]);
   const [profile, setProfile] = useState({});
   const [profileLoading, setProfileLoading] = useState(false);
@@ -24,6 +27,13 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
     salary: '',
     location: '',
     type: 'Full-time',
+  });
+    const [course, setcourse] = useState({
+    title: '',
+    description: '',
+    link: '',
+    prerequisite: '',
+    duration: '',
   });
 
   // Fetch employer profile on mount or when switching to profile tab
@@ -62,9 +72,27 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
     });
     return () => unsub();
   }, []);
+    useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'courses'), (querySnapshot) => {
+      const courseData = [];
+      querySnapshot.forEach((doc) => {
+        courseData.push({ id: doc.id, ...doc.data() });
+      });
+      setcourse(courseData);
+
+   console.log(course);
+   
+    });
+    return () => unsub();
+  }, []);
 
   const handleFormChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+  const handlecourseschange = (e) => {
+    setcourse({ ...course, [e.target.name]: e.target.value });
+    console.log(course);
+    
   };
 
   // Post job to Firestore
@@ -75,6 +103,15 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
     setForm({ title: '', description: '', skills: '', salary: '', location: '', type: 'Full-time' });
     setActiveTab('jobs');
   };
+    const handlecourse = async (e) => {
+    e.preventDefault();
+    if (!course.title || !course.description) return;
+    // Save the course object (not the job `form`) to the courses collection
+    await addDoc(collection(db, 'courses'), { ...course, applicants: [] });
+    setcourse({ title: '', link : "", description: '', prerequisite: '', duration: '' });
+    setActiveTab('courses');
+  };
+
 
   // Delete job from Firestore
   const handleDeleteJob = async (id) => {
@@ -270,6 +307,34 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
               </div>
             </form>
           )}
+        {activeTab === 'courses' && (
+            <form onSubmit={handlecourse} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block mb-2 text-gray-700 font-semibold">Course Title</label>
+                <input name="title" value={course.title} onChange={handlecourseschange} className="w-full px-4 py-2 rounded bg-white border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div>
+                <label className="block mb-2 text-gray-700 font-semibold">Link</label>
+                <input name="link" value={course.link} onChange={handlecourseschange} className="w-full px-4 py-2 rounded bg-white border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block mb-2 text-gray-700 font-semibold">Courses Description</label>
+                <textarea name="description" value={course.description} onChange={handlecourseschange} className="w-full px-4 py-2 rounded bg-white border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3} required />
+              </div>
+              <div>
+                <label className="block mb-2 text-gray-700 font-semibold">Prerequisite Skills</label>
+                <input name="prerequisite" value={course.prerequisite} onChange={handlecourseschange} className="w-full px-4 py-2 rounded bg-white border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div>
+                <label className="block mb-2 text-gray-700 font-semibold">Course Duration</label>
+                <input name="duration" value={course.duration} onChange={handlecourseschange} className="w-full px-4 py-2 rounded bg-white border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              
+              <div className="md:col-span-2 flex justify-end">
+                <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-full font-semibold text-white shadow transition">Create Course</button>
+              </div>
+            </form>
+          )}
 
           {/* View Posted Jobs */}
           {activeTab === 'jobs' && (
@@ -284,6 +349,26 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
                       <div className="text-gray-500">{job.location} • {job.type}</div>
                       <div className="text-gray-500 mt-1">{job.skills}</div>
                       <div className="text-blue-600 mt-2 font-bold">₹{job.salary}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+         {/* View Posted courses */}
+{activeTab === 'courses' && (
+            <div>
+              <h2 className="text-xl font-bold mb-6 text-blue-700">Your Posted courses</h2>
+              <div className="space-y-6">
+                {course.length === 0 && <div className="text-gray-400">No courses posted yet.</div>}
+                {course.map(course => (
+                  <div key={course.id} className="bg-white rounded-xl p-6 shadow flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-blue-100">
+                    <div>
+                      <div className="text-lg font-semibold text-blue-900">{course.title}</div>
+                      <div className="text-gray-500">{course.link} • {course.link}</div>
+                      <div className="text-gray-500 mt-1">{course.prerequisite}</div>
+                      <div className="text-blue-600 mt-2 font-bold">₹{course.duration}</div>
                     </div>
                   </div>
                 ))}
@@ -367,6 +452,7 @@ export default function HomeEmployer({ onSignOut, onProfile }) {
               </div>
             </div>
           )}
+           
         </div>
       </div>
     </div>
